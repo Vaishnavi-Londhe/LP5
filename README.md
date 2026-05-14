@@ -11,8 +11,8 @@
 
 %%writefile cuda_program.cu
 
-#include 
-#include 
+#include <iostream>
+#include <cuda_runtime.h>
 
 using namespace std;
 
