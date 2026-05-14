@@ -1,8 +1,8 @@
 import pandas as pd 
 import numpy as np 
 
-df1 = pd.read_csv("Google_stock_price_train.csv")
-df2 = pd.read_csv("Google_stock_price_test.csv")
+df1 = pd.read_csv("Google_Stock_Price_Train.csv")
+df2 = pd.read_csv("Google_Stock_Price_Test.csv")
 
 df1.info()
 
