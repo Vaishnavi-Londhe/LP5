@@ -1,75 +1,144 @@
+# ============================================================
+# Experiment No. 1
 # Boston Housing Price Prediction using Deep Neural Network
+# Linear Regression using Deep Learning
+# ============================================================
 
-# Import libraries
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
 
-# Load Dataset
-df = pd.read_csv("HousingData.csv")
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-# Display dataset info
+
+# ------------------------------------------------------------
+# Step 1: Load Dataset
+# ------------------------------------------------------------
+
+DATASET_PATH = r"C:\Users\hp\OneDrive\Desktop\LPVI\HPC\DL\boston_test.csv"
+
+df = pd.read_csv(DATASET_PATH)
+
+print("First 5 Records:")
 print(df.head())
-print(df.info())
 
-# Check missing values
-print("\nMissing Values:")
-print(df.isnull().sum())
+print("\nColumns in Dataset:")
+print(df.columns.tolist())
 
-# Remove missing values if any
+print("\nDataset Shape:")
+print(df.shape)
+
+
+# ------------------------------------------------------------
+# Step 2: Clean Column Names
+# ------------------------------------------------------------
+
+df.columns = df.columns.str.strip()
+
+print("\nCleaned Columns:")
+print(df.columns.tolist())
+
+
+# ------------------------------------------------------------
+# Step 3: Find Target Column Automatically
+# ------------------------------------------------------------
+
+possible_targets = ["MEDV", "PRICE", "Price", "price", "target", "TARGET"]
+
+target_col = None
+
+for col in possible_targets:
+    if col in df.columns:
+        target_col = col
+        break
+
+if target_col is None:
+    print("\nERROR: Target column not found.")
+    print("Your dataset does not contain MEDV / PRICE / price / target column.")
+    print("\nAvailable columns are:")
+    print(df.columns.tolist())
+    print("\nSolution:")
+    print("1. Use training dataset that contains house price column.")
+    print("2. Or add target column in CSV.")
+    print("3. If your target column has another name, set it manually in target_col.")
+    raise SystemExit
+
+print("\nTarget Column Selected:", target_col)
+
+
+# ------------------------------------------------------------
+# Step 4: Data Cleaning
+# ------------------------------------------------------------
+
 df = df.dropna()
 
-# Convert all columns to numeric (safety)
-df = df.apply(pd.to_numeric, errors='coerce')
-
-# Remove any remaining NaN rows
+df = df.apply(pd.to_numeric, errors="coerce")
 df = df.dropna()
 
-# Check columns
-print("\nColumns:")
-print(df.columns)
 
-# Target column
-target_col = "MEDV"   # Change if needed
+# ------------------------------------------------------------
+# Step 5: Split Features and Target
+# ------------------------------------------------------------
 
-# Features and Target
 X = df.drop(target_col, axis=1)
 y = df[target_col]
 
-# Train-Test Split
+
+# ------------------------------------------------------------
+# Step 6: Train-Test Split
+# ------------------------------------------------------------
+
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
+    X,
+    y,
     test_size=0.2,
     random_state=42
 )
 
-# Feature Scaling
+
+# ------------------------------------------------------------
+# Step 7: Feature Scaling
+# ------------------------------------------------------------
+
 scaler = StandardScaler()
 
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
-# Build Deep Neural Network
+
+# ------------------------------------------------------------
+# Step 8: Build DNN Model
+# ------------------------------------------------------------
+
 model = tf.keras.Sequential([
-    tf.keras.layers.Dense(64, activation='relu',
-                           input_shape=(X_train.shape[1],)),
-    tf.keras.layers.Dense(32, activation='relu'),
-    tf.keras.layers.Dense(16, activation='relu'),
+    tf.keras.layers.Dense(64, activation="relu", input_shape=(X_train.shape[1],)),
+    tf.keras.layers.Dense(32, activation="relu"),
+    tf.keras.layers.Dense(16, activation="relu"),
     tf.keras.layers.Dense(1)
 ])
 
-# Compile model
+
+# ------------------------------------------------------------
+# Step 9: Compile Model
+# ------------------------------------------------------------
+
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-    loss='mse',
-    metrics=['mae']
+    loss="mse",
+    metrics=["mae"]
 )
 
-# Train model
+print("\nModel Summary:")
+model.summary()
+
+
+# ------------------------------------------------------------
+# Step 10: Train Model
+# ------------------------------------------------------------
+
 history = model.fit(
     X_train,
     y_train,
@@ -79,50 +148,66 @@ history = model.fit(
     verbose=1
 )
 
-# Prediction
-y_pred = model.predict(X_test)
 
-# Remove NaN predictions if any
-mask = ~np.isnan(y_pred.flatten())
+# ------------------------------------------------------------
+# Step 11: Prediction
+# ------------------------------------------------------------
 
-y_test_clean = y_test.iloc[mask]
-y_pred_clean = y_pred.flatten()[mask]
+y_pred = model.predict(X_test).flatten()
 
 
-# Evaluation
-mae = mean_absolute_error(y_test_clean, y_pred_clean)
-mse = mean_squared_error(y_test_clean, y_pred_clean)
+# ------------------------------------------------------------
+# Step 12: Evaluation
+# ------------------------------------------------------------
+
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
 rmse = np.sqrt(mse)
+r2 = r2_score(y_test, y_pred)
 
-print("\nEvaluation Metrics:")
-print("MAE:", mae)
-print("MSE:", mse)
-print("RMSE:", rmse)
+print("\n========== Evaluation Metrics ==========")
+print("MAE  :", mae)
+print("MSE  :", mse)
+print("RMSE :", rmse)
+print("R2   :", r2)
 
-# Actual vs Predicted
+
+# ------------------------------------------------------------
+# Step 13: Actual vs Predicted Table
+# ------------------------------------------------------------
+
 results = pd.DataFrame({
-    "Actual Price": y_test_clean.values,
-    "Predicted Price": y_pred_clean
+    "Actual Price": y_test.values,
+    "Predicted Price": y_pred
 })
 
 print("\nSample Predictions:")
 print(results.head())
 
 
-# Plot Loss Graph
-plt.figure(figsize=(8,5))
-plt.plot(history.history['loss'], label='Training Loss')
-plt.plot(history.history['val_loss'], label='Validation Loss')
+# ------------------------------------------------------------
+# Step 14: Plot Loss Graph
+# ------------------------------------------------------------
+
+plt.figure(figsize=(8, 5))
+plt.plot(history.history["loss"], label="Training Loss")
+plt.plot(history.history["val_loss"], label="Validation Loss")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.title("Training vs Validation Loss")
 plt.legend()
+plt.grid(True)
 plt.show()
 
-# Scatter Plot
-plt.figure(figsize=(6,6))
-plt.scatter(y_test_clean, y_pred_clean)
+
+# ------------------------------------------------------------
+# Step 15: Actual vs Predicted Scatter Plot
+# ------------------------------------------------------------
+
+plt.figure(figsize=(6, 6))
+plt.scatter(y_test, y_pred)
 plt.xlabel("Actual Price")
 plt.ylabel("Predicted Price")
 plt.title("Actual vs Predicted Prices")
+plt.grid(True)
 plt.show()
