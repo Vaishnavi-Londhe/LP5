@@ -267,6 +267,10 @@ int main() {
     return 0;
 }
 
+
 !nvcc cuda_program.cu -o cuda_program
+
 !printf "1\n5\n1 2 3 4 5\n10 20 30 40 50\n" | ./cuda_program
+
+
 !printf "2\n3\n1 2 3\n4 5 6\n7 8 9\n1 0 0\n0 1 0\n0 0 1\n" | ./cuda_program
