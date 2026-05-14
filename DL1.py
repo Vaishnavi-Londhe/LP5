@@ -1,163 +1,128 @@
-# ============================================================
-# Experiment No. 1
-# Linear Regression using Deep Neural Network
-# House Price Prediction using Deep Learning
-# ============================================================
+# Boston Housing Price Prediction using Deep Neural Network
 
-# Import required libraries
-import numpy as np
+# Import libraries
 import pandas as pd
-import matplotlib.pyplot as plt
-
-from sklearn.datasets import fetch_california_housing
+import numpy as np
+import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import matplotlib.pyplot as plt
 
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+# Load Dataset
+df = pd.read_csv("HousingData.csv")
 
+# Display dataset info
+print(df.head())
+print(df.info())
 
-# ------------------------------------------------------------
-# Step 1: Load Dataset
-# ------------------------------------------------------------
-housing = fetch_california_housing()
+# Check missing values
+print("\nMissing Values:")
+print(df.isnull().sum())
 
-# Convert dataset into DataFrame
-data = pd.DataFrame(housing.data, columns=housing.feature_names)
-data["PRICE"] = housing.target
+# Remove missing values if any
+df = df.dropna()
 
-print("First 5 records of dataset:")
-print(data.head())
+# Convert all columns to numeric (safety)
+df = df.apply(pd.to_numeric, errors='coerce')
 
-print("\nDataset shape:")
-print(data.shape)
+# Remove any remaining NaN rows
+df = df.dropna()
 
-print("\nChecking missing values:")
-print(data.isnull().sum())
+# Check columns
+print("\nColumns:")
+print(df.columns)
 
+# Target column
+target_col = "MEDV"   # Change if needed
 
-# ------------------------------------------------------------
-# Step 2: Split Features and Target
-# ------------------------------------------------------------
-X = data.drop("PRICE", axis=1)
-y = data["PRICE"]
+# Features and Target
+X = df.drop(target_col, axis=1)
+y = df[target_col]
 
-
-# ------------------------------------------------------------
-# Step 3: Train-Test Split
-# ------------------------------------------------------------
+# Train-Test Split
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y,
+    test_size=0.2,
+    random_state=42
 )
 
-
-# ------------------------------------------------------------
-# Step 4: Standardization
-# ------------------------------------------------------------
+# Feature Scaling
 scaler = StandardScaler()
 
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
+# Build Deep Neural Network
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(64, activation='relu',
+                           input_shape=(X_train.shape[1],)),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(16, activation='relu'),
+    tf.keras.layers.Dense(1)
+])
 
-# ------------------------------------------------------------
-# Step 5: Build Deep Neural Network Model
-# ------------------------------------------------------------
-model = Sequential()
-
-model.add(Dense(128, activation="relu", input_shape=(X_train.shape[1],)))
-model.add(Dense(64, activation="relu"))
-model.add(Dense(32, activation="relu"))
-model.add(Dense(16, activation="relu"))
-
-# Output layer for regression problem
-model.add(Dense(1))
-
-
-# ------------------------------------------------------------
-# Step 6: Compile Model
-# ------------------------------------------------------------
+# Compile model
 model.compile(
-    optimizer="adam",
-    loss="mean_squared_error",
-    metrics=["mae"]
+    optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+    loss='mse',
+    metrics=['mae']
 )
 
-print("\nModel Summary:")
-model.summary()
-
-
-# ------------------------------------------------------------
-# Step 7: Train Model
-# ------------------------------------------------------------
+# Train model
 history = model.fit(
     X_train,
     y_train,
     epochs=100,
-    batch_size=32,
-    validation_split=0.1,
+    batch_size=16,
+    validation_split=0.2,
     verbose=1
 )
 
-
-# ------------------------------------------------------------
-# Step 8: Evaluate Model
-# ------------------------------------------------------------
-loss, mae = model.evaluate(X_test, y_test, verbose=0)
-
+# Prediction
 y_pred = model.predict(X_test)
 
-mse = mean_squared_error(y_test, y_pred)
+# Remove NaN predictions if any
+mask = ~np.isnan(y_pred.flatten())
+
+y_test_clean = y_test.iloc[mask]
+y_pred_clean = y_pred.flatten()[mask]
+
+
+# Evaluation
+mae = mean_absolute_error(y_test_clean, y_pred_clean)
+mse = mean_squared_error(y_test_clean, y_pred_clean)
 rmse = np.sqrt(mse)
-r2 = r2_score(y_test, y_pred)
 
-print("\n========== Model Evaluation ==========")
-print("Mean Squared Error  :", mse)
-print("Root Mean Squared Error:", rmse)
-print("Mean Absolute Error :", mae)
-print("R2 Score            :", r2)
+print("\nEvaluation Metrics:")
+print("MAE:", mae)
+print("MSE:", mse)
+print("RMSE:", rmse)
 
+# Actual vs Predicted
+results = pd.DataFrame({
+    "Actual Price": y_test_clean.values,
+    "Predicted Price": y_pred_clean
+})
 
-# ------------------------------------------------------------
-# Step 9: Predict New House Price
-# ------------------------------------------------------------
-# Sample input has 8 features because California Housing dataset has 8 features
-# Features:
-# MedInc, HouseAge, AveRooms, AveBedrms, Population, AveOccup, Latitude, Longitude
-
-new_house = np.array([[8.3252, 41.0, 6.9841, 1.0238, 322.0, 2.5556, 37.88, -122.23]])
-
-new_house_scaled = scaler.transform(new_house)
-
-predicted_price = model.predict(new_house_scaled)
-
-print("\n========== New House Prediction ==========")
-print("Predicted House Price:", predicted_price[0][0])
+print("\nSample Predictions:")
+print(results.head())
 
 
-# ------------------------------------------------------------
-# Step 10: Plot Training Loss
-# ------------------------------------------------------------
-plt.figure(figsize=(8, 5))
-plt.plot(history.history["loss"], label="Training Loss")
-plt.plot(history.history["val_loss"], label="Validation Loss")
-plt.xlabel("Epochs")
+# Plot Loss Graph
+plt.figure(figsize=(8,5))
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel("Epoch")
 plt.ylabel("Loss")
-plt.title("Training Loss vs Validation Loss")
+plt.title("Training vs Validation Loss")
 plt.legend()
 plt.show()
 
-
-# ------------------------------------------------------------
-# Step 11: Plot Training MAE
-# ------------------------------------------------------------
-plt.figure(figsize=(8, 5))
-plt.plot(history.history["mae"], label="Training MAE")
-plt.plot(history.history["val_mae"], label="Validation MAE")
-plt.xlabel("Epochs")
-plt.ylabel("Mean Absolute Error")
-plt.title("Training MAE vs Validation MAE")
-plt.legend()
+# Scatter Plot
+plt.figure(figsize=(6,6))
+plt.scatter(y_test_clean, y_pred_clean)
+plt.xlabel("Actual Price")
+plt.ylabel("Predicted Price")
+plt.title("Actual vs Predicted Prices")
 plt.show()
