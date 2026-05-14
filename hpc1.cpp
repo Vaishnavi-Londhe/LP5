@@ -143,3 +143,15 @@ int main() {
 
     return 0;
 }
+
+
+/*Enter number of nodes: 5
+Enter number of edges: 4
+
+Enter edges (u v):
+0 1
+0 2
+1 3
+2 4
+
+Enter starting node: 0*/
